@@ -5,6 +5,7 @@ import Eval
 
 import Control.Monad
 
+main :: IO ()
 main = do
     putStr "λ> "
     line <- getLine
