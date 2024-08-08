@@ -1,17 +1,18 @@
 module LambdaExpr ( LambdaExpr(..), Identifier(..), nextId ) where
 
 
-newtype Identifier = Id (String, Int) deriving (Eq, Ord)
+data Identifier = Id { name :: String
+                     , index :: Int } deriving (Eq, Ord)
 
 instance Show Identifier where
-    show (Id (str, 0)) = str
-    show (Id (str, n)) = str ++ show n
+    show (Id { name = str, index = 0}) = str
+    show (Id { name = str, index = n}) = str ++ show n
 
 instance Read Identifier where
-    readsPrec _ str = [(Id (str, 0), "")]
+    readsPrec _ str = [(Id { name = str, index = 0}, "")]
 
 nextId :: Identifier -> Identifier
-nextId (Id (str, n)) = Id (str, n + 1)
+nextId (Id { name = str, index = n}) = Id { name = str, index = n + 1}
 
 
 data LambdaExpr = Var Identifier

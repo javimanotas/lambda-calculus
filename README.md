@@ -1,2 +1,2 @@
-# lambda-calculus
-Lambda calculus interpreter
+# Lambda Calculus
+Lambda calculus interactive REPL and interpreter

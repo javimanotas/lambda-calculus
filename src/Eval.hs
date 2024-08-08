@@ -2,12 +2,14 @@ module Eval ( eval ) where
 
 import LambdaExpr
 
+import Data.List
+import Data.Function
 import qualified Data.Set as Set
 import qualified Data.Map as Map
 
 
 eval :: LambdaExpr -> LambdaExpr
-eval = eval' Set.empty
+eval = simplifyRename . eval' Set.empty
     where
         eval' _   (Var x)     = Var x
         eval' set (Abstr x y) = Abstr x $ eval' (Set.insert x set) y
@@ -43,9 +45,13 @@ alphaRename set exp =
             let newX = until ((&&) <$> (not . (`Set.member` bounded)) <*> (not . (`Set.member` set))) nextId x in
             change x newX exp
 
+boundedVars :: LambdaExpr -> Set.Set Identifier
+boundedVars (Var x) = Set.singleton x
+boundedVars (Appl x y) = boundedVars x `Set.union` boundedVars y
+boundedVars (Abstr x y) = Set.insert x $ boundedVars y
 
 change :: Identifier -> Identifier -> LambdaExpr -> LambdaExpr
-change old new (Var x)    = Var $ substitute old new x
+change old new (Var x) = Var $ substitute old new x
 change old new (Appl x y) = Appl (change old new x) (change old new y)
 change old new (Abstr x y) = Abstr (substitute old new x) $ change old new y
 
@@ -54,7 +60,9 @@ substitute :: Eq p => p -> p -> p -> p
 substitute old new var = if var == old then new else var
 
 
-boundedVars :: LambdaExpr -> Set.Set Identifier
-boundedVars (Var x) = Set.singleton x
-boundedVars (Appl x y) = boundedVars x `Set.union` boundedVars y
-boundedVars (Abstr x y) = Set.insert x $ boundedVars y
+simplifyRename :: LambdaExpr -> LambdaExpr
+simplifyRename expr =
+    let bounded = Set.toAscList $ boundedVars expr in -- its sorted
+    let grouped = groupBy ((==) `on` name) bounded in
+    let renames = concatMap (zipWith (\i x -> x {index = i} ) [0..]) grouped in
+    foldl (flip $ uncurry change) expr $ zip bounded renames

@@ -8,7 +8,7 @@ import Control.Monad
 
 
 parse :: String -> Either String LambdaExpr
-parse = (fmap (parseTree . flatten) <$> makeTree) <=< tokenize
+parse = fmap (parseTree . flatten) . makeTree <=< tokenize
 
 
 consumeBracket :: [Token] -> Either String ([Token], [Token])
