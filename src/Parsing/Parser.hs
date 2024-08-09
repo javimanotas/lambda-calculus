@@ -12,15 +12,16 @@ import Data.Char
 import Data.Function
 import qualified Data.Map as Map
 import qualified Data.Set as Set
+import Control.Monad.State
 
-
-parse :: String -> Env -> (Either String ReplResult, Env)
-parse input env =
+parse :: String -> State Env (Either String ReplResult)
+parse input = do
+    env <- get
     let parsed = do
             tokens <- tokenize input
             if Equal `notElem` tokens
                 then Expr <$> (makeTree tokens >>= parseTree env)
-            else 
+            else
                 let grouped = groupBy ((==) `on` (== Equal)) tokens in
                 case grouped of
                     [[Name str@(x:xs)], [Equal], tokens] -> do
@@ -29,12 +30,11 @@ parse input env =
                         sTree <- makeTree tokens
                         tree <- parseTree env sTree
                         return $ Definition str tree
-                    _ -> Left "Syntax error on assignement" in
-    (parsed, insertMaybe parsed env)
-    where
-        insertMaybe (Right (Definition name var)) map = Map.insert name var map
-        insertMaybe _                             map = map
-
+                    _ -> Left "Syntax error on assignment"
+    case parsed of
+        (Right (Definition name var)) -> modify (Map.insert name var)
+        _ -> return ()
+    return parsed
 
 consumeBracket :: [Token] -> Either String ([Token], [Token])
 consumeBracket = go 0 []

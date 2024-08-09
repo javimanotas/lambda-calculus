@@ -5,6 +5,7 @@ import Eval
 import State
 
 import Control.Monad
+import Control.Monad.State
 import qualified Data.Map as Map
 
 
@@ -13,7 +14,7 @@ runRepl env = do
     putStr "λ> "
     line <- getLine
     unless (line == "") (do
-        let (result, env') = parse line env
+        let (result, env') = runState (parse line) env
         case result of
             Left e -> print $ "Error: " ++ e
             Right (Expr e) -> print $ eval e
