@@ -1,14 +1,39 @@
 module Parsing.Parser ( parse ) where
 
 import LambdaExpr
+import State
 import Parsing.Tokenizer
 import Parsing.Ast
+import Eval
 
 import Control.Monad
+import Data.List
+import Data.Char
+import Data.Function
+import qualified Data.Map as Map
+import qualified Data.Set as Set
 
 
-parse :: String -> Either String LambdaExpr
-parse = fmap (parseTree . flatten) . makeTree <=< tokenize
+parse :: String -> Env -> (Either String ReplResult, Env)
+parse input env =
+    let parsed = do
+            tokens <- tokenize input
+            if Equal `notElem` tokens
+                then Expr <$> (makeTree tokens >>= parseTree env)
+            else 
+                let grouped = groupBy ((==) `on` (== Equal)) tokens in
+                case grouped of
+                    [[Name str@(x:xs)], [Equal], tokens] -> do
+                        when (isAsciiLower x) $
+                            Left "Definitions must start with uppercase"
+                        sTree <- makeTree tokens
+                        tree <- parseTree env sTree
+                        return $ Definition str tree
+                    _ -> Left "Syntax error on assignement" in
+    (parsed, insertMaybe parsed env)
+    where
+        insertMaybe (Right (Definition name var)) map = Map.insert name var map
+        insertMaybe _                             map = map
 
 
 consumeBracket :: [Token] -> Either String ([Token], [Token])
@@ -48,7 +73,28 @@ makeTree (other:_) = Left $ "Unexpected \"" ++ show other ++ "\""
 makeTree [] = return $ Nested []
 
 
-parseTree :: SyntaxTree -> LambdaExpr
-parseTree (Leaf x) = Var $ read x
-parseTree (Nested l) = foldl1 Appl (map parseTree l)
-parseTree (Node x y) = Abstr (read x) (parseTree y)
+parseTree :: Env -> SyntaxTree -> Either String LambdaExpr
+parseTree env sTree = do
+    tree <- parseTree' sTree
+    foldM replaceVar tree $ definedVars sTree
+    where
+        definedVars :: SyntaxTree -> Set.Set String
+        definedVars (Leaf str@(x:xs))
+            | isAsciiUpper x = Set.singleton str
+            | otherwise      = Set.empty
+        definedVars (Nested l) = foldMap definedVars l
+        definedVars (Node _ x) = definedVars x
+        
+        parseTree' :: SyntaxTree -> Either String LambdaExpr
+        parseTree' (Leaf x) = return $ Var $ read x
+        parseTree' (Nested l) = do
+            subTrees <- mapM parseTree' l
+            return $ foldl1 Appl subTrees
+        parseTree' (Node str@(x:xs) y)
+            | isAsciiUpper x = Left "Lambda parameter can't start with capital letter"
+            | otherwise      = Abstr (read str) <$> parseTree' y
+
+        replaceVar :: LambdaExpr -> String -> Either String LambdaExpr
+        replaceVar lambda var = case env Map.!? var of
+            Nothing -> Left $ "Undefined variable " ++ var
+            Just expr -> Right $ replace Set.empty (read var) expr lambda

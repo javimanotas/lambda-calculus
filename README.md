@@ -1,2 +1,2 @@
 # Lambda Calculus
-Lambda calculus interactive REPL and interpreter
+Untyped lambda calculus REPL made from scracth

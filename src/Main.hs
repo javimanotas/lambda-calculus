@@ -1,17 +1,25 @@
-module Main where
+module Main ( main ) where
 
 import Parsing.Parser
 import Eval
+import State
 
 import Control.Monad
+import qualified Data.Map as Map
 
-main :: IO ()
-main = do
+
+runRepl :: Env -> IO ()
+runRepl env = do
     putStr "λ> "
     line <- getLine
-    when (line == "")
-        main
-    case parse line of
-        Left err -> print err
-        Right val -> print $ eval val
-    main
+    unless (line == "") (do
+        let (result, env') = parse line env
+        case result of
+            Left e -> print $ "Error: " ++ e
+            Right (Expr e) -> print $ eval e
+            _ -> return ()
+        runRepl env')
+
+
+main :: IO ()
+main = runRepl Map.empty

@@ -1,4 +1,4 @@
-module Eval ( eval ) where
+module Eval ( eval, replace ) where
 
 import LambdaExpr
 
