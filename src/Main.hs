@@ -16,7 +16,7 @@ runRepl env = do
     unless (line == "") (do
         let (result, env') = runState (parse line) env
         case result of
-            Left e -> print $ "Error: " ++ e
+            Left e -> putStrLn $ "Error: " ++ e
             Right (Expr e) -> print $ eval e
             _ -> return ()
         runRepl env')

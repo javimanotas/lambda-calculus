@@ -23,27 +23,30 @@ eval = simplifyRename . eval' Set.empty
 
 -- replaces var with exp in lambda
 replace :: Set.Set Identifier -> Identifier -> LambdaExpr -> LambdaExpr -> LambdaExpr
-replace bounded var exp (Var x)
-    | var == x  = alphaRename bounded exp
-    | otherwise = Var x
-replace bounded var exp (Appl x y) = Appl x' y'
+replace = replace' Set.empty
     where
-        x' = replace bounded var exp x
-        y' = replace bounded var exp y
-replace bounded var exp a@(Abstr x y)
-    | var == x  = a
-    | otherwise = Abstr x $ replace (Set.insert x bounded) var exp y
+        replace' inBounded outBounded var exp (Var x)
+            | var == x  = alphaRename inBounded outBounded exp
+            | otherwise = Var x
+        replace' inBounded outBounded var exp (Appl x y) = Appl x' y'
+            where
+                x' = replace' inBounded outBounded var exp x
+                y' = replace' inBounded outBounded var exp y
+        replace' inBounded outBounded var exp a@(Abstr x y)
+            | var == x  = a
+            | otherwise = Abstr x $ replace' (Set.insert x inBounded) outBounded var exp y
 
 
-alphaRename :: Set.Set Identifier -> LambdaExpr -> LambdaExpr
-alphaRename set exp =
+alphaRename :: Set.Set Identifier -> Set.Set Identifier -> LambdaExpr -> LambdaExpr
+alphaRename inBounded outBounded exp =
     let bounded = boundedVars exp in
-    let collisions = Set.intersection set bounded in
+    let collisions = Set.intersection inBounded bounded in
+    let set = Set.union inBounded outBounded in
     case Set.lookupMin collisions of
         Nothing -> exp
         Just x ->
-            let newX = until ((&&) <$> (not . (`Set.member` bounded)) <*> (not . (`Set.member` set))) nextId x in
-            change x newX exp
+            let newX = until ((&&) <$> (`Set.notMember` bounded) <*> (`Set.notMember` set)) nextId x in
+            alphaRename inBounded outBounded $ change x newX exp
 
 boundedVars :: LambdaExpr -> Set.Set Identifier
 boundedVars (Var x) = Set.singleton x
