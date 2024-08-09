@@ -2,14 +2,14 @@ module Main ( main ) where
 
 import Parsing.Parser
 import Eval
-import State
+import qualified Enviroment as Env
+import Repl
 
 import Control.Monad
 import Control.Monad.State
-import qualified Data.Map as Map
 
 
-runRepl :: Env -> IO ()
+runRepl :: Env.Env -> IO ()
 runRepl env = do
     putStr "λ> "
     line <- getLine
@@ -23,4 +23,4 @@ runRepl env = do
 
 
 main :: IO ()
-main = runRepl Map.empty
+main = runRepl Env.empty

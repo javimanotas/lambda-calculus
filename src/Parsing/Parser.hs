@@ -1,20 +1,20 @@
 module Parsing.Parser ( parse ) where
 
 import LambdaExpr
-import State
+import qualified Enviroment as Env
+import Repl
 import Parsing.Tokenizer
-import Parsing.Ast
+import Parsing.ParsingTree
 import Eval
 
 import Control.Monad
 import Data.List
 import Data.Char
 import Data.Function
-import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Control.Monad.State
 
-parse :: String -> State Env (Either String ReplResult)
+parse :: String -> State Env.Env (Either String Result)
 parse input = do
     env <- get
     let parsed = do
@@ -32,7 +32,7 @@ parse input = do
                         return $ Definition str tree
                     _ -> Left "Syntax error on assignment"
     case parsed of
-        (Right (Definition name var)) -> modify (Map.insert name var)
+        (Right (Definition name var)) -> modify (Env.add name var)
         _ -> return ()
     return parsed
 
@@ -49,43 +49,43 @@ consumeBracket = go 0 []
                         _ -> 0
 
 
-makeTree :: [Token] -> Either String SyntaxTree
+makeTree :: [Token] -> Either String ParsingTree
 makeTree (LeftBracket:xs) = do
     (consumed, unconsumed) <- consumeBracket xs
     do
         l <- makeTree consumed
         r <- makeTree unconsumed
-        return $ Nested [l] <> r
+        return $ Nested [l] <> r -- nested gives priority
 makeTree (Lambda:xs) =
     let (consumed, unconsumed) = break (==Dot) xs in
     case unconsumed of
          [] -> Left "Unmatched \"λ\""
          [Dot] -> Left "Missing body of lambda"
-         (_:xs) -> do
+         (Dot:xs) -> do
             r <- makeTree xs
-            let vars = reverse consumed
-            let folding b (Name n) = return $ Node n b
-                folding b _ = Left "asd"
+            let vars = reverse consumed -- reverse because foldM acts like foldMl but a foldMr was required
             foldM folding r vars
-makeTree [Name n] = return $ Leaf n
-makeTree ((Name n) : xs) = (Leaf n <>) <$> makeTree xs
+                where
+                    folding b (Name n) = return $ Node n b
+                    folding _ token    = Left $ "Unexpected \"" ++ show token ++ "\""
+makeTree (Name n : xs) = (Leaf n <>) <$> makeTree xs
 makeTree (other:_) = Left $ "Unexpected \"" ++ show other ++ "\""
 makeTree [] = return $ Nested []
 
 
-parseTree :: Env -> SyntaxTree -> Either String LambdaExpr
+parseTree :: Env.Env -> ParsingTree -> Either String LambdaExpr
 parseTree env sTree = do
     tree <- parseTree' sTree
     foldM replaceVar tree $ definedVars sTree
     where
-        definedVars :: SyntaxTree -> Set.Set String
+        definedVars :: ParsingTree -> Set.Set String
         definedVars (Leaf str@(x:xs))
             | isAsciiUpper x = Set.singleton str
             | otherwise      = Set.empty
         definedVars (Nested l) = foldMap definedVars l
         definedVars (Node _ x) = definedVars x
         
-        parseTree' :: SyntaxTree -> Either String LambdaExpr
+        parseTree' :: ParsingTree -> Either String LambdaExpr
         parseTree' (Leaf x) = return $ Var $ read x
         parseTree' (Nested l) = do
             subTrees <- mapM parseTree' l
@@ -95,6 +95,6 @@ parseTree env sTree = do
             | otherwise      = Abstr (read str) <$> parseTree' y
 
         replaceVar :: LambdaExpr -> String -> Either String LambdaExpr
-        replaceVar lambda var = case env Map.!? var of
+        replaceVar lambda var = case Env.get var env of
             Nothing -> Left $ "Undefined variable " ++ var
             Just expr -> Right $ replace Set.empty (read var) expr lambda

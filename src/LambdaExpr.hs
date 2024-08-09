@@ -1,23 +1,32 @@
 module LambdaExpr ( LambdaExpr(..), Identifier(..), nextId ) where
 
+import Data.Char
+
 
 data Identifier = Id { name :: String
-                     , index :: Int } deriving (Eq, Ord)
+                     , index :: Int }
+                     deriving (Eq, Ord)
 
 instance Show Identifier where
-    show (Id { name = str, index = 0}) = str
-    show (Id { name = str, index = n}) = str ++ show n
+    show (Id { name = str, index = 0 }) = str
+    show (Id { name = str, index = n }) = str ++ show n
 
 instance Read Identifier where
-    readsPrec _ str = [(Id { name = str, index = 0}, "")]
+    readsPrec _ str =
+        let (revNums, revStr) = span isDigit $ reverse str in
+        let name = reverse revStr in
+        let num = case revNums of
+                [] -> 0
+                xs -> read $ reverse xs in
+        [(Id { name = name, index = num }, "")]
 
 nextId :: Identifier -> Identifier
-nextId (Id { name = str, index = n}) = Id { name = str, index = n + 1}
+nextId id = id { index = index id + 1}
 
 
 data LambdaExpr = Var Identifier
-            | Abstr Identifier LambdaExpr
-            | Appl LambdaExpr LambdaExpr
+                | Abstr Identifier LambdaExpr
+                | Appl LambdaExpr LambdaExpr
 
 instance Show LambdaExpr where
     show (Var x)     = show x

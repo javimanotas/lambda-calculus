@@ -1,4 +1,4 @@
-module Parsing.Tokenizer ( Token(..), isBracket, tokenize ) where
+module Parsing.Tokenizer ( Token(..), tokenize ) where
 
 import Data.Char
 
@@ -9,11 +9,6 @@ data Token = LeftBracket
            | Equal
            | Name String
            deriving Eq
-
-isBracket :: Token -> Bool
-isBracket LeftBracket  = True
-isBracket RightBracket = True
-isBracket _            = False
 
 instance Show Token where
     show LeftBracket  = "("

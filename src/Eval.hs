@@ -48,10 +48,12 @@ alphaRename inBounded outBounded exp =
             let newX = until ((&&) <$> (`Set.notMember` bounded) <*> (`Set.notMember` set)) nextId x in
             alphaRename inBounded outBounded $ change x newX exp
 
+
 boundedVars :: LambdaExpr -> Set.Set Identifier
 boundedVars (Var x) = Set.singleton x
 boundedVars (Appl x y) = boundedVars x `Set.union` boundedVars y
 boundedVars (Abstr x y) = Set.insert x $ boundedVars y
+
 
 change :: Identifier -> Identifier -> LambdaExpr -> LambdaExpr
 change old new (Var x) = Var $ substitute old new x
