@@ -43,4 +43,4 @@ instance Show LambdaExpr where
                     other -> '(' : show other ++ ")"
 
 instance Eq LambdaExpr where
-    (==) _ _ = False -- TODO 
+    (==) _ _ = False -- Returns if they are alpha equivalent

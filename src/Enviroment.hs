@@ -10,8 +10,8 @@ type Env = Map.Map String LambdaExpr
 empty :: Env
 empty = Map.empty
 
-add :: Ord k => k -> a -> Map.Map k a -> Map.Map k a
+add :: String -> LambdaExpr -> Env -> Env
 add = Map.insert
 
-get :: Ord k => k -> Map.Map k a -> Maybe a
+get :: String -> Env -> Maybe LambdaExpr
 get = Map.lookup
