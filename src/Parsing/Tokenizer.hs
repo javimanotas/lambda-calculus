@@ -1,4 +1,4 @@
-module Parsing.Tokenizer ( Token(..), tokenize ) where
+module Parsing.Tokenizer ( Token(..), tokenize, consumeBracket ) where
 
 import Data.Char
 
@@ -24,6 +24,18 @@ symbols = [('(', LeftBracket)
           ,('λ', Lambda)
           ,('.', Dot)
           ,('=', Equal)]
+
+consumeBracket :: [Token] -> Either String ([Token], [Token])
+consumeBracket = go 0 []
+    where
+          go _ _   []                = Left "Unmatched \")\""
+          go 0 acc (RightBracket:xs) = return (reverse acc, xs)
+          go n acc (x:xs)            = go (n + m) (x:acc) xs
+                where
+                    m = case x of
+                        LeftBracket -> 1
+                        RightBracket -> -1
+                        _ -> 0
 
 tokenize :: String -> Either String [Token]
 tokenize ""       = Right []

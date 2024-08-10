@@ -14,11 +14,10 @@ eval = simplifyRename . eval' Set.empty
         eval' _   (Var x)     = Var x
         eval' set (Abstr x y) = Abstr x $ eval' (Set.insert x set) y
         eval' set (Appl x y)  =
-            let x' = eval' set x
-                y' = eval' set y in
+            let x' = eval' set x in
             case x' of
-                Abstr z w -> eval' set $ replace set z y' w
-                _         -> Appl x' y'
+                Abstr z w -> eval' set $ replace set z y w
+                _         -> Appl x' $ eval' set y
 
 
 -- replaces var with exp in lambda

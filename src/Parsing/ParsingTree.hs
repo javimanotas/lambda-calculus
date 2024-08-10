@@ -4,9 +4,9 @@ module Parsing.ParsingTree ( ParsingTree(..) ) where
 to the tree used for evaluating expressions -}
 
 data ParsingTree = Leaf String
-                | Nested [ParsingTree]
-                | Node String ParsingTree
-                deriving Show
+                 | Nested [ParsingTree]
+                 | Node String ParsingTree
+                 deriving Show
 
 instance Semigroup ParsingTree where
     Nested l <> Nested r = Nested (l <> r)

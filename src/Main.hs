@@ -10,88 +10,85 @@ import Control.Monad.State
 import Control.Exception
 
 main :: IO ()
-main = loadFile Env.empty "env.lambda" >>= runRepl
+main = do
+    env <- execStateT (loadFile "env.lambda") Env.empty
+    evalStateT runRepl env
 
 
-runRepl :: Env.Env -> IO ()
-runRepl env = do
-    putStr "λ> "
-    line <- getLine
+runRepl :: StateT Env.Env IO ()
+runRepl = do
+    liftIO $ putStr "λ> "
+    line <- liftIO getLine
     if isCommand line
-        then runCommand line env
-    else 
-        evalLine env line >>= runRepl
+        then runCommand line
+    else do
+        evalLine line
+        runRepl
 
 
-evalLine :: Env.Env -> String -> IO Env.Env
-evalLine env line =
-    if null line
-        then return env
-        else do
-            let (result, env') = runState (parse line) env
-            case result of
-                Left e -> putStrLn $ "Error: " ++ e
-                Right (Expr e) -> print $ eval e
-                _ -> return ()
-            return env'
+evalLine :: String -> StateT Env.Env IO ()
+evalLine line =
+    unless (null line) $ do
+        env <- get
+        let (result, env') = runState (parse line) env
+        put env'
+        case result of
+            Left e -> liftIO $ putStrLn $ "Error: " ++ e
+            Right (Expr e) -> liftIO $ print $ eval e
+            _ -> return ()
 
 
-runCommand :: String -> Env.Env -> IO ()
-runCommand line env = do
-    let command = parseCommand line
-    case command of
-        Just (Quit, _) -> return ()
-        _ -> do
-            runRepl =<< case command of
-                
-                Nothing -> do
-                    putStrLn $ "Command " ++ takeWhile (/= ' ') line ++ " not found"
+runCommand :: String -> StateT Env.Env IO ()
+runCommand line = do
+    let (command, args) = parseCommand line
+    if command == Just Quit
+        then return ()
+    else do
+        env <- get
+        case command of
+            
+            Nothing -> liftIO $ do
+                putStrLn $ "Command " ++ takeWhile (/= ' ') line ++ " not found"
+                putStrLn "Enter :? for help"
+            
+            Just Quit -> return ()
+            
+            Just Help -> liftIO $ do
+                putStrLn "Commands:"
+                mapM_ print descriptions
+            
+            Just Load -> mapM_ loadFile args
+            
+            Just Save -> liftIO $ case args of
+                [file] -> tryWriteFile env file
+                _ -> do
+                    putStrLn "Invalid number of arguments for :s"
                     putStrLn "Enter :? for help"
-                    return env
+            
+            Just Print -> case args of
+                [arg] -> liftIO $ case Env.get arg env of
+                            Nothing -> putStrLn $ "Error: Undefined var " ++ arg
+                            Just x -> print x
+                _ -> liftIO $ do
+                    putStrLn "Invalid number of arguments for :p"
+                    putStrLn "Enter :? for help"
+            
+            Just Remove -> modify (`removeVars` args)
+                where removeVars = foldl (flip Env.remove)
 
-                Just (Help, _) -> do
-                    putStrLn "Commands:"
-                    mapM_ print descriptions
-                    return env
-                
-                Just (Load, l) -> foldM loadFile env l
-                
-                Just (Save, args) -> do
-                    case args of
-                        [file] -> saveFile env file
-                        _ -> do
-                            putStrLn "Invalid number of arguments for :s"
-                            putStrLn "Enter :? for help"
-                    return env
-                
-                Just (Print, args) -> do
-                        case args of
-                            [arg] -> case Env.get arg env of
-                                Nothing -> putStrLn ("Error: Undefined var " ++ arg)
-                                Just x -> print x
-                            _ -> do
-                                putStrLn "Invalid number of arguments for :p"
-                                putStrLn "Enter :? for help"
-                        return env
-                
-                Just (Remove, vars) -> return $ foldl (flip Env.remove) env vars
+        runRepl
 
 
-loadFile :: Env.Env -> FilePath -> IO Env.Env
-loadFile env file = action `catch` handler
-    where
-        action = do
-            content <- lines <$> readFile file
-            putStrLn $ "Running " ++ file
-            foldM evalLine env content
-        
-        handler :: SomeException -> IO Env.Env
-        handler e = do
-            print e
-            return env
+loadFile :: FilePath -> StateT Env.Env IO ()
+loadFile file = do
+    content <- liftIO $ lines <$> (readFile file `catch` handler)
+    mapM_ evalLine content
+  where
+    handler :: SomeException -> IO String
+    handler = const $ return ""
 
 
-saveFile :: Show p => p -> String -> IO ()
-saveFile env file = action `catch`  (print :: SomeException -> IO ())
+tryWriteFile :: Show p => p -> String -> IO ()
+tryWriteFile env file = action `catch` (print :: SomeException -> IO ())
     where
         action = writeFile file (show env)
