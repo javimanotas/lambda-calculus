@@ -54,21 +54,31 @@ runCommand line env = do
                     mapM_ print descriptions
                     return env
                 
-                Just (Run, l) -> foldM loadFile env l
+                Just (Load, l) -> foldM loadFile env l
                 
-                Just (Print, [arg]) -> do
-                        case Env.get arg env of
-                            Nothing -> putStrLn ("Error: Undefined var " ++ arg)
-                            Just x -> print x
-                        return env
-                Just (Print, _) -> do
-                            putStrLn "Invalid number of arguments for :p"
+                Just (Save, args) -> do
+                    case args of
+                        [file] -> saveFile env file
+                        _ -> do
+                            putStrLn "Invalid number of arguments for :s"
                             putStrLn "Enter :? for help"
-                            return env
+                    return env
+                
+                Just (Print, args) -> do
+                        case args of
+                            [arg] -> case Env.get arg env of
+                                Nothing -> putStrLn ("Error: Undefined var " ++ arg)
+                                Just x -> print x
+                            _ -> do
+                                putStrLn "Invalid number of arguments for :p"
+                                putStrLn "Enter :? for help"
+                        return env
+                
+                Just (Remove, vars) -> return $ foldl (flip Env.remove) env vars
 
 
 loadFile :: Env.Env -> FilePath -> IO Env.Env
-loadFile env file = catch action handler
+loadFile env file = action `catch` handler
     where
         action = do
             content <- lines <$> readFile file
@@ -79,3 +89,9 @@ loadFile env file = catch action handler
         handler e = do
             print e
             return env
+
+
+saveFile :: Show p => p -> String -> IO ()
+saveFile env file = action `catch`  (print :: SomeException -> IO ())
+    where
+        action = writeFile file (show env)

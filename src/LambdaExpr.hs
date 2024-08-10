@@ -13,9 +13,9 @@ instance Show Identifier where
 
 instance Read Identifier where
     readsPrec _ str =
-        let (revNums, revStr) = span isDigit $ reverse str in
-        let name = reverse revStr in
-        let num = case revNums of
+        let (revNums, revStr) = span isDigit $ reverse str
+            name = reverse revStr
+            num = case revNums of
                 [] -> 0
                 xs -> read $ reverse xs in
         [(Id { name = name, index = num }, "")]

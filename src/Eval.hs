@@ -14,8 +14,8 @@ eval = simplifyRename . eval' Set.empty
         eval' _   (Var x)     = Var x
         eval' set (Abstr x y) = Abstr x $ eval' (Set.insert x set) y
         eval' set (Appl x y)  =
-            let x' = eval' set x in
-            let y' = eval' set y in
+            let x' = eval' set x
+                y' = eval' set y in
             case x' of
                 Abstr z w -> eval' set $ replace set z y' w
                 _         -> Appl x' y'
@@ -39,9 +39,9 @@ replace = replace' Set.empty
 
 alphaRename :: Set.Set Identifier -> Set.Set Identifier -> LambdaExpr -> LambdaExpr
 alphaRename inBounded outBounded exp =
-    let bounded = boundedVars exp in
-    let collisions = Set.intersection inBounded bounded in
-    let set = Set.union inBounded outBounded in
+    let bounded = boundedVars exp
+        collisions = Set.intersection inBounded bounded
+        set = Set.union inBounded outBounded in
     case Set.lookupMin collisions of
         Nothing -> exp
         Just x ->
@@ -67,7 +67,7 @@ substitute old new var = if var == old then new else var
 
 simplifyRename :: LambdaExpr -> LambdaExpr
 simplifyRename expr =
-    let bounded = Set.toAscList $ boundedVars expr in -- its sorted
-    let grouped = groupBy ((==) `on` name) bounded in
-    let renames = concatMap (zipWith (\i x -> x {index = i} ) [0..]) grouped in
+    let bounded = Set.toAscList $ boundedVars expr -- its sorted
+        grouped = groupBy ((==) `on` name) bounded
+        renames = concatMap (zipWith (\i x -> x {index = i} ) [0..]) grouped in
     foldl (flip $ uncurry change) expr $ zip bounded renames
