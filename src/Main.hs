@@ -12,6 +12,8 @@ import Control.Exception
 
 main :: IO ()
 main = do
+    putStrLn "Lambda calculus interactive REPL"
+    putStrLn "Enter :? for help"
     env <- execStateT (loadFile "env.lambda") Env.empty
     evalStateT runRepl env
 
