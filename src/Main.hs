@@ -2,6 +2,7 @@ module Main ( main ) where
 
 import Parsing.Parser
 import Eval
+import LambdaExpr
 import qualified Enviroment as Env
 import Repl
 
@@ -22,20 +23,32 @@ runRepl = do
     if isCommand line
         then runCommand line
     else do
-        evalLine line
+        evalLine True line
         runRepl
 
 
-evalLine :: String -> StateT Env.Env IO ()
-evalLine line =
+evalLine :: Bool -> String -> StateT Env.Env IO ()
+evalLine show line =
     unless (null line) $ do
         env <- get
         let (result, env') = runState (parse line) env
         put env'
         case result of
             Left e -> liftIO $ putStrLn $ "Error: " ++ e
-            Right (Expr e) -> liftIO $ print $ eval e
-            _ -> return ()
+            Right (Expr e) ->
+                let result = eval e in
+                liftIO $ do
+                    print result
+                    when show $ showMatches result env
+            Right (Definition _ e) -> liftIO $ when show $ showMatches e env
+    where
+        showMatches :: LambdaExpr -> Env.Env -> IO ()
+        showMatches lambda env =
+            let definitions = Env.content env
+                matches = [name | (name, exp) <- definitions, exp == lambda] in
+            case matches of
+                [] -> return ()
+                l -> putStrLn $ "Matches: " ++ foldl1 (\a b -> a ++ ", " ++ b) l
 
 
 runCommand :: String -> StateT Env.Env IO ()
@@ -82,7 +95,7 @@ runCommand line = do
 loadFile :: FilePath -> StateT Env.Env IO ()
 loadFile file = do
     content <- liftIO $ lines <$> (readFile file `catch` handler)
-    mapM_ evalLine content
+    mapM_ (evalLine False) content
   where
     handler :: SomeException -> IO String
     handler = const $ return ""

@@ -1,4 +1,4 @@
-module Enviroment ( Env, empty, add, get, remove ) where
+module Enviroment ( Env, empty, add, get, remove, content ) where
 
 import LambdaExpr
 
@@ -24,3 +24,6 @@ get str = Map.lookup str . getEnv
 
 remove :: String -> Env -> Env
 remove str = Env . Map.delete str . getEnv
+
+content :: Env -> [(String, LambdaExpr)]
+content = Map.toList . getEnv

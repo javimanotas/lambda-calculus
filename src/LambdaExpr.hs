@@ -1,7 +1,8 @@
 module LambdaExpr ( LambdaExpr(..), Identifier(..), nextId ) where
 
 import Data.Char
-
+import Data.Function
+import qualified Data.Map as Map
 
 data Identifier = Id { name :: String
                      , index :: Int }
@@ -42,5 +43,20 @@ instance Show LambdaExpr where
                     v@(Var _) -> show v
                     other -> '(' : show other ++ ")"
 
+data BrujinIdx = BVar (Maybe Int)
+               | BAbstr BrujinIdx
+               | BAppl BrujinIdx BrujinIdx
+               deriving Eq
+
 instance Eq LambdaExpr where
-    (==) _ _ = False -- Returns if they are alpha equivalent
+    (==) = (==) `on` toBrujin
+        where
+            toBrujin :: LambdaExpr -> BrujinIdx
+            toBrujin = toBrujin' Map.empty
+                where
+                    toBrujin' m (Var x) = BVar $ Map.lookup x m
+                    toBrujin' m (Appl x y) = BAppl (toBrujin' m x) (toBrujin' m y)
+                    toBrujin' m (Abstr x y) =
+                        let inserted = Map.insert x 0 m
+                            m' = fmap (+1) inserted in
+                        BAbstr $ toBrujin' m' y
