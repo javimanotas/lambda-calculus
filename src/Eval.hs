@@ -1,57 +1,54 @@
 module Eval ( eval, replace ) where
 
 import LambdaExpr
-
 import Data.List
-import Data.Function
 import qualified Data.Set as Set
-import qualified Data.Map as Map
+import Data.Function
 
 
 eval :: LambdaExpr -> LambdaExpr
-eval = simplifyRename . eval' Set.empty
+eval expr = case tryReduce expr of
+    Var v   -> Var v
+    Abstr v m -> Abstr v (eval m)
+    Appl m n -> Appl (eval m) (eval n)
     where
-        eval' _   (Var x)     = Var x
-        eval' set (Abstr x y) = Abstr x $ eval' (Set.insert x set) y
-        eval' set (Appl x y)  =
-            let x' = eval' set x in
-            case x' of
-                Abstr z w -> eval' set $ replace set z y w
-                _         -> Appl x' $ eval' set y
+        tryReduce appl@(Appl m a) = case tryReduce m of
+            Abstr v f -> tryReduce $ replace v a f
+            other -> appl
+        tryReduce term = term
 
 
 -- replaces var with exp in lambda
-replace :: Set.Set Identifier -> Identifier -> LambdaExpr -> LambdaExpr -> LambdaExpr
+replace :: Identifier -> LambdaExpr -> LambdaExpr -> LambdaExpr
 replace = replace' Set.empty
     where
-        replace' inBounded outBounded var exp (Var x)
-            | var == x  = alphaRename inBounded outBounded exp
+        replace' inBounded var exp (Var x)
+            | var == x  = alphaRename inBounded exp
             | otherwise = Var x
-        replace' inBounded outBounded var exp (Appl x y) = Appl x' y'
+        replace' inBounded var exp (Appl x y) = Appl x' y'
             where
-                x' = replace' inBounded outBounded var exp x
-                y' = replace' inBounded outBounded var exp y
-        replace' inBounded outBounded var exp a@(Abstr x y)
+                x' = replace' inBounded var exp x
+                y' = replace' inBounded var exp y
+        replace' inBounded var exp a@(Abstr x y)
             | var == x  = a
-            | otherwise = Abstr x $ replace' (Set.insert x inBounded) outBounded var exp y
+            | otherwise = Abstr x $ replace' (Set.insert x inBounded) var exp y
 
 
-alphaRename :: Set.Set Identifier -> Set.Set Identifier -> LambdaExpr -> LambdaExpr
-alphaRename inBounded outBounded exp =
-    let bounded = boundedVars exp
-        collisions = Set.intersection inBounded bounded
-        set = Set.union inBounded outBounded in
-    case Set.lookupMin collisions of
+alphaRename :: Set.Set Identifier -> LambdaExpr -> LambdaExpr
+alphaRename set exp =
+    let collisions = Set.intersection set $ identifiers exp
+        bounded = Set.union set collisions
+    in case Set.lookupMin collisions of
         Nothing -> exp
         Just x ->
-            let newX = until ((&&) <$> (`Set.notMember` bounded) <*> (`Set.notMember` set)) nextId x in
-            alphaRename inBounded outBounded $ change x newX exp
+            let newX = until (`Set.notMember` bounded) nextId x in
+            alphaRename set $ change x newX exp
 
 
-boundedVars :: LambdaExpr -> Set.Set Identifier
-boundedVars (Var x) = Set.singleton x
-boundedVars (Appl x y) = boundedVars x `Set.union` boundedVars y
-boundedVars (Abstr x y) = Set.insert x $ boundedVars y
+identifiers :: LambdaExpr -> Set.Set Identifier
+identifiers (Var x) = Set.singleton x
+identifiers (Appl x y) = identifiers x `Set.union` identifiers y
+identifiers (Abstr x y) = Set.insert x $ identifiers y
 
 
 change :: Identifier -> Identifier -> LambdaExpr -> LambdaExpr
@@ -61,12 +58,14 @@ change old new (Abstr x y) = Abstr (substitute old new x) $ change old new y
 
 
 substitute :: Eq p => p -> p -> p -> p
-substitute old new var = if var == old then new else var
+substitute old new var
+    | var == old = new
+    | otherwise  = var
 
 
 simplifyRename :: LambdaExpr -> LambdaExpr
 simplifyRename expr =
-    let bounded = Set.toAscList $ boundedVars expr -- its sorted
+    let bounded = Set.toAscList $ identifiers expr -- its sorted
         grouped = groupBy ((==) `on` name) bounded
-        renames = concatMap (zipWith (\i x -> x {index = i} ) [0..]) grouped in
-    foldl (flip $ uncurry change) expr $ zip bounded renames
+        renames = concatMap (zipWith (\i x -> x {index = i} ) [0..]) grouped
+    in foldl (flip $ uncurry change) expr $ zip bounded renames

@@ -14,7 +14,7 @@ main :: IO ()
 main = do
     putStrLn "Lambda calculus interactive REPL"
     putStrLn "Enter :? for help"
-    env <- execStateT (loadFile "env.lambda") Env.empty
+    env <- execStateT (loadFile "lambdaenv") Env.empty
     evalStateT runRepl env
 
 
@@ -23,7 +23,9 @@ runRepl = do
     liftIO $ putStr "λ> "
     line <- liftIO getLine
     if isCommand line
-        then runCommand line
+    then do
+        runCommand line
+        runRepl
     else do
         evalLine True line
         runRepl
@@ -42,13 +44,15 @@ evalLine show line =
                 liftIO $ do
                     print result
                     when show $ showMatches result env
-            Right (Definition _ e) -> liftIO $ when show $ showMatches e env
+            Right (Definition s e) -> do
+                modify (Env.add s e)
+                liftIO $ when show $ showMatches e env
     where
         showMatches :: LambdaExpr -> Env.Env -> IO ()
         showMatches lambda env =
             let definitions = Env.content env
-                matches = [name | (name, exp) <- definitions, exp == lambda] in
-            case matches of
+                matches = [name | (name, exp) <- definitions, exp == lambda]
+            in case matches of
                 [] -> return ()
                 l -> putStrLn $ "Matches: " ++ foldl1 (\a b -> a ++ ", " ++ b) l
 
@@ -90,8 +94,6 @@ runCommand line = do
             
             Just Remove -> modify (`removeVars` args)
                 where removeVars = foldl (flip Env.remove)
-
-        runRepl
 
 
 loadFile :: FilePath -> StateT Env.Env IO ()

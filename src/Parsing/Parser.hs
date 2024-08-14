@@ -12,28 +12,25 @@ import Data.List
 import Data.Char
 import Data.Function
 import qualified Data.Set as Set
+import qualified Data.Map as Map
 import Control.Monad.State
 
 parse :: String -> State Env.Env (Either String Result)
 parse input = do
     env <- get
-    let parsed = do
-            tokens <- tokenize input
-            if Equal `notElem` tokens
-                then Expr <$> getTree tokens env
-            else
-                let grouped = groupBy ((==) `on` (== Equal)) tokens in
-                case grouped of
-                    [[Name str@(x:xs)], [Equal], tokens] -> do
-                        when (isAsciiLower x) $
-                            Left "Definitions must start with uppercase"
-                        tree <- getTree tokens env
-                        return $ Definition str tree
-                    _ -> Left "Syntax error on assignment"
-    case parsed of
-        (Right (Definition name var)) -> modify (Env.add name var)
-        _ -> return ()
-    return parsed
+    return $ do
+        tokens <- tokenize input
+        if Equal `notElem` tokens
+            then Expr <$> getTree tokens env
+        else
+            let grouped = groupBy ((==) `on` (== Equal)) tokens in
+            case grouped of
+                [[Name str@(x:xs)], [Equal], tokens] -> do
+                    when (isAsciiLower x) $
+                        Left "Definitions must start with uppercase"
+                    tree <- getTree tokens env
+                    return $ Definition str tree
+                _ -> Left "Syntax error on assignment"
 
 getTree :: [Token] -> Env.Env -> Either String LambdaExpr
 getTree tokens env = makeTree tokens >>= parseTree env
@@ -87,4 +84,4 @@ parseTree env sTree = do
         replaceVar :: LambdaExpr -> String -> Either String LambdaExpr
         replaceVar lambda var = case Env.get var env of
             Nothing -> Left $ "Undefined variable " ++ var
-            Just expr -> Right $ replace Set.empty (read var) expr lambda
+            Just expr -> Right $ replace (read var) expr lambda

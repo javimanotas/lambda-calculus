@@ -3,6 +3,7 @@ K = \x y.x
 C = \f a b.f b a
 B = \f g a.f (g a)
 V = \a b f.f a b
+Y = \f . (\x . f(x x))(\x . f(x x))
 
 True = K
 False = \x y.y
@@ -33,3 +34,4 @@ Sub = \n k.k Pred n
 Leq = \n k.IsZero (Sub n k)
 Eq = \n k.And (Leq n k) (Leq k n)
 Gt = \n k.Not (Leq n k)
+Fact = Y(\f n . (IsZero n) One (Mul n (f (Pred n))))

@@ -45,5 +45,5 @@ tokenize l@(x:xs) = case x `lookup` symbols of
     Nothing -> if not $ isAlpha x
         then Left ("Invalid character \"" ++ x : "\"" )
         else
-            let (consumed, unconsumed) = span isAlphaNum l in
+            let (consumed, unconsumed) = span isAlpha l in
             (Name consumed:) <$> tokenize unconsumed

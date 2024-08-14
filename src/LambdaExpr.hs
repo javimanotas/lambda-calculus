@@ -14,12 +14,11 @@ instance Show Identifier where
 
 instance Read Identifier where
     readsPrec _ str =
-        let (revNums, revStr) = span isDigit $ reverse str
-            name = reverse revStr
-            num = case revNums of
+        let (name, nums) = break isDigit str
+            num = case nums of
                 [] -> 0
-                xs -> read $ reverse xs in
-        [(Id { name = name, index = num }, "")]
+                xs -> read xs
+        in [(Id { name = name, index = num }, "")]
 
 nextId :: Identifier -> Identifier
 nextId id = id { index = index id + 1}
@@ -58,5 +57,5 @@ instance Eq LambdaExpr where
                     toBrujin' m (Appl x y) = BAppl (toBrujin' m x) (toBrujin' m y)
                     toBrujin' m (Abstr x y) =
                         let inserted = Map.insert x 0 m
-                            m' = fmap (+1) inserted in
-                        BAbstr $ toBrujin' m' y
+                            m' = fmap (+1) inserted
+                        in BAbstr $ toBrujin' m' y
