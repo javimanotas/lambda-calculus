@@ -1,4 +1,4 @@
-module LambdaExpr ( LambdaExpr(..), Identifier(..), nextId, isDefinition ) where
+module LambdaExpr ( LambdaExpr(..), Identifier(..), nextId, isDefinition, matchedChurch ) where
 
 import Data.Char
 import Data.Function
@@ -14,17 +14,18 @@ instance Show Identifier where
 
 instance Read Identifier where
     readsPrec _ str =
-        let (name, nums) = break isDigit str
+        let (body, nums) = break isDigit str
             num = case nums of
                 [] -> 0
                 xs -> read xs
-        in [(Id { name = name, index = num }, "")]
+        in [(Id { name = body, index = num }, "")]
 
 nextId :: Identifier -> Identifier
-nextId id = id { index = index id + 1}
+nextId identifier = identifier { index = index identifier + 1}
 
 isDefinition :: Identifier -> Bool
 isDefinition (Id {name = x:_, index = _}) = isAsciiUpper x
+isDefinition _                            = False
 
 data LambdaExpr = Var Identifier
                 | Abstr Identifier LambdaExpr
@@ -34,7 +35,7 @@ instance Show LambdaExpr where
     show (Var x)     = show x
     show (Abstr x y) = "λ" ++ show x ++ showAbstr y
         -- support reduced form
-        where showAbstr (Abstr x y) = ' ' : show x ++ showAbstr y
+        where showAbstr (Abstr x' y') = ' ' : show x' ++ showAbstr y'
               showAbstr other       = '.' : show other
     show (Appl x y)  = x' ++ ' ' : y'
         where x' = case x of
@@ -61,3 +62,15 @@ instance Eq LambdaExpr where
                         let inserted = Map.insert x 0 m
                             m' = fmap (+1) inserted
                         in BAbstr $ toBrujin' m' y
+
+matchedChurch :: LambdaExpr -> Maybe Int
+matchedChurch (Abstr x (Abstr y z)) = matched z
+    where
+        matched (Var v)
+            | v == y    = Just 0
+            | otherwise = Nothing
+        matched (Appl (Var l) b)
+            | x == l    = (+1) <$> matched b
+            | otherwise = Nothing
+        matched _      = Nothing
+matchedChurch _                     = Nothing
