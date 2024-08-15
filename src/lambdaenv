@@ -34,4 +34,6 @@ Sub = \n k.k Pred n
 Leq = \n k.IsZero (Sub n k)
 Eq = \n k.And (Leq n k) (Leq k n)
 Gt = \n k.Not (Leq n k)
-Fact = Y(\f n . (IsZero n) One (Mul n (f (Pred n))))
+
+Fact = Y(\f n . IsZero n One (Mul n (f (Pred n))))
+Fib = Y (\f n . Leq n One n (Add (f (Pred n)) (f (Pred (Pred n)))))
