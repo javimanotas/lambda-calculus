@@ -9,12 +9,14 @@ import Repl
 import Control.Monad
 import Control.Monad.State
 import Control.Exception
+import System.IO
 
 main :: IO ()
 main = do
+    hSetBuffering stdout NoBuffering
     putStrLn "Lambda calculus interactive REPL"
     putStrLn "Enter :? for help"
-    env <- execStateT (loadFile "lambdaenv") Env.empty
+    env <- execStateT (loadFile "src/lambdaenv") Env.empty
     evalStateT runRepl env
 
 

@@ -1,0 +1,32 @@
+cabal-version:      3.0
+name:               lambda-calculus
+version:            0.1.0.0
+synopsis:           untyped lambda calculus REPL
+-- description:
+license:            MIT
+license-file:       LICENSE
+author:             Javier Manotas Ruiz
+maintainer:         jmanotasruiz@gmail.com
+-- copyright:
+category:           Language
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+
+executable lambda-calculus
+    import:           warnings
+    main-is:          Main.hs
+    other-modules:
+        Enviroment
+        Eval
+        LambdaExpr
+        Parser
+        Repl
+    default-extensions: FlexibleContexts
+    -- other-extensions:
+    build-depends:    base ^>=4.17.2.1, containers, mtl, parsec
+    hs-source-dirs:   src
+    default-language: Haskell2010

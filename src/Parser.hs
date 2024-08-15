@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Parser ( parseLine, InputResult(..) ) where
 
 import LambdaExpr
@@ -5,10 +6,7 @@ import qualified Enviroment as Env
 import Eval
 
 import Control.Monad
-import Data.List
-import Data.Function
 import qualified Data.Set as Set
-import qualified Control.Monad.State as M
 import Text.Parsec
 import Control.Arrow
 
@@ -72,7 +70,7 @@ replace' env expr = foldM replaceVar expr $ definedVars expr
             | isDefinition x    = Set.singleton x
             | otherwise         = Set.empty
         definedVars (Appl x y)  = definedVars x `Set.union` definedVars y
-        definedVars (Abstr x y) = definedVars y
+        definedVars (Abstr _ y) = definedVars y
         
         replaceVar :: LambdaExpr -> Identifier -> Either String LambdaExpr
         replaceVar lambda var = case Env.get (show var) env of

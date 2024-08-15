@@ -1,2 +1,8 @@
+# Ignore GHC compiled files
 *.hi
 *.o
+*.dyn_hi
+*.dyn_o
+
+# Ignore Cabal build folder
+dist-newstyle/

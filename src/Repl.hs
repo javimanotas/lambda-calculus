@@ -1,8 +1,5 @@
 module Repl ( Command(..), isCommand, parseCommand, descriptions ) where
 
-import LambdaExpr
-
-
 data Command = Quit
              | Help
              | Load

@@ -7,15 +7,17 @@ import Data.Function
 
 
 eval :: LambdaExpr -> LambdaExpr
-eval expr = case tryReduce expr of
-    Var v   -> Var v
-    Abstr v m -> Abstr v (eval m)
-    Appl m n -> Appl (eval m) (eval n)
+eval = simplifyRename . eval'
     where
-        tryReduce appl@(Appl m a) = case tryReduce m of
-            Abstr v f -> tryReduce $ replace v a f
-            other -> appl
-        tryReduce term = term
+        eval' expr = case tryReduce expr of
+            Var v   -> Var v
+            Abstr v m -> Abstr v (eval' m)
+            Appl m n -> Appl (eval' m) (eval' n)
+            where
+                tryReduce appl@(Appl m a) = case tryReduce m of
+                    Abstr v f -> tryReduce $ replace v a f
+                    _ -> appl
+                tryReduce term = term
 
 
 -- replaces var with exp in lambda
