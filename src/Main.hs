@@ -20,8 +20,8 @@ main = do
 
 runRepl :: StateT Env.Env IO ()
 runRepl = do
-    liftIO $ putStr "λ> "
-    line <- liftIO getLine
+    lift $ putStr "λ> "
+    line <- lift getLine
     if isCommand line
     then do
         runCommand line
@@ -36,15 +36,15 @@ evalLine show line =
     unless (null line) $ do
         env <- get
         case parseLine line env of
-            Left e -> liftIO $ putStrLn $ "Error: " ++ e
+            Left e -> lift $ putStrLn $ "Error: " ++ e
             Right (Evaluate e) ->
                 let result = eval e in
-                liftIO $ do
+                lift $ do
                     print result
                     when show $ showMatches result env
             Right (Definition s e) -> do
                 modify (Env.add s e)
-                liftIO $ when show $ showMatches e env
+                lift $ when show $ showMatches e env
     where
         showMatches :: LambdaExpr -> Env.Env -> IO ()
         showMatches lambda env =
@@ -64,39 +64,43 @@ runCommand line = do
         env <- get
         case command of
             
-            Nothing -> liftIO $ do
+            Nothing -> lift $ do
                 putStrLn $ "Command " ++ takeWhile (/= ' ') line ++ " not found"
                 putStrLn "Enter :? for help"
             
             Just Quit -> return ()
             
-            Just Help -> liftIO $ do
+            Just Help -> lift $ do
                 putStrLn "Commands:"
                 mapM_ print descriptions
             
             Just Load -> mapM_ loadFile args
             
-            Just Save -> liftIO $ case args of
+            Just Save -> lift $ case args of
                 [file] -> tryWriteFile env file
                 _ -> do
                     putStrLn "Invalid number of arguments for :s"
                     putStrLn "Enter :? for help"
             
             Just Print -> case args of
-                [arg] -> liftIO $ case Env.get arg env of
+                [arg] -> lift $ case Env.get arg env of
                             Nothing -> putStrLn $ "Error: Undefined var " ++ arg
                             Just x -> print x
-                _ -> liftIO $ do
+                _ -> lift $ do
                     putStrLn "Invalid number of arguments for :p"
                     putStrLn "Enter :? for help"
             
             Just Remove -> modify (`removeVars` args)
                 where removeVars = foldl (flip Env.remove)
 
+            Just Env -> lift $ case map fst $ Env.content env of
+                [] -> return ()
+                l -> putStrLn $ foldl1 (\a b -> a ++ ", " ++ b) l
+
 
 loadFile :: FilePath -> StateT Env.Env IO ()
 loadFile file = do
-    content <- liftIO $ lines <$> (readFile file `catch` handler)
+    content <- lift $ lines <$> (readFile file `catch` handler)
     mapM_ (evalLine False) content
   where
     handler :: SomeException -> IO String

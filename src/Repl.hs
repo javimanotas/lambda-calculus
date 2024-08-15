@@ -4,18 +4,19 @@ import LambdaExpr
 
 
 data Command = Quit
-              | Help
-              | Load
-              | Print
-              | Save
-              | Remove
-              deriving (Eq, Enum, Bounded)
+             | Help
+             | Load
+             | Print
+             | Save
+             | Remove
+             | Env
+             deriving (Eq, Enum, Bounded)
 
 type Args = [String]
 
 
 commands :: [(String, Command)]
-commands = zip [":q", ":?", ":l", ":p", ":s", ":rm"] $ enumFrom minBound
+commands = zip [":q", ":?", ":l", ":p", ":s", ":rm", ":env"] $ enumFrom minBound
 
 
 descriptions :: [String]
@@ -24,7 +25,8 @@ descriptions = [ ":?                     help"
                , ":p  <name>             prints a defined value without evaluating it"
                , ":l  <file1> <file2>... loads the files into the current REPL sesion"
                , ":s  <file>             saves all the defined variables into a file"
-               , ":rm <var1> <var2>...   deletes saved variables from the enviroment"]
+               , ":rm <var1> <var2>...   deletes saved variables from the enviroment"
+               , ":env                   shows all the variables of the enviroment"]
 
 
 isCommand :: String -> Bool
