@@ -1,6 +1,6 @@
 module Main ( main ) where
 
-import Parsing.Parser
+import Parser
 import Eval
 import LambdaExpr
 import qualified Enviroment as Env
@@ -35,11 +35,9 @@ evalLine :: Bool -> String -> StateT Env.Env IO ()
 evalLine show line =
     unless (null line) $ do
         env <- get
-        let (result, env') = runState (parse line) env
-        put env'
-        case result of
+        case parseLine line env of
             Left e -> liftIO $ putStrLn $ "Error: " ++ e
-            Right (Expr e) ->
+            Right (Evaluate e) ->
                 let result = eval e in
                 liftIO $ do
                     print result

@@ -1,9 +1,7 @@
-module Repl ( Result(..), Command(..), isCommand, parseCommand, descriptions ) where
+module Repl ( Command(..), isCommand, parseCommand, descriptions ) where
 
 import LambdaExpr
 
-data Result = Definition String LambdaExpr
-            | Expr LambdaExpr
 
 data Command = Quit
               | Help

@@ -1,4 +1,4 @@
-module LambdaExpr ( LambdaExpr(..), Identifier(..), nextId ) where
+module LambdaExpr ( LambdaExpr(..), Identifier(..), nextId, isDefinition ) where
 
 import Data.Char
 import Data.Function
@@ -23,6 +23,8 @@ instance Read Identifier where
 nextId :: Identifier -> Identifier
 nextId id = id { index = index id + 1}
 
+isDefinition :: Identifier -> Bool
+isDefinition (Id {name = x:_, index = _}) = isAsciiUpper x
 
 data LambdaExpr = Var Identifier
                 | Abstr Identifier LambdaExpr
