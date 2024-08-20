@@ -10,6 +10,7 @@ import Control.Monad
 import Control.Monad.State
 import Control.Exception
 import System.IO
+import Data.Maybe
 
 main :: IO ()
 main = do
@@ -50,10 +51,8 @@ evalLine showMatches line = do
         matches :: LambdaExpr -> Env.Env -> IO ()
         matches lambda env =
             let definitions = Env.content env
-                matching = [alias | (alias, expr) <- definitions, expr == lambda] ++ case matchedChurch lambda of
-                    Nothing -> []
-                    Just x -> [show x]
-            in case matching of
+                matching = [alias | (alias, expr) <- definitions, expr == lambda]
+            in case matching ++ maybeToList (show <$> matchedChurch lambda) of
                 [] -> return ()
                 l -> putStrLn $ "Matches: " ++ foldl1 (\a b -> a ++ ", " ++ b) l
 
@@ -78,13 +77,22 @@ runCommand line = do
                     putStrLn "Invalid number of arguments for :s"
                     putStrLn "Enter :? for help"
             
-            Just Print -> lift $ case args of
-                [arg] -> case Env.get arg env of
-                            Nothing -> putStrLn $ "Error: Undefined var " ++ arg
-                            Just x -> print x
-            
-            Just Remove -> modify (`removeVars` args)
-                where removeVars = foldl (flip Env.remove)
+            Just Print -> lift $ forM_ args $ \arg ->
+                            case Env.get arg env of
+                                Nothing -> putStrLn $ "Error: Undefined var " ++ arg
+                                Just x -> do
+                                    putStr $ arg ++ " -> "
+                                    print x
+
+            Just Norm -> forM_ args $ \arg ->
+                            case Env.get arg env of
+                                Nothing -> lift $ putStrLn $ "Error: Undefined var " ++ arg
+                                Just x -> modify (Env.add arg (normalForm x))
+
+            Just Remove -> case args of
+                     ["-all"] -> modify (const Env.empty)
+                     _        -> modify (`removeVars` args)
+                                    where removeVars = foldl (flip Env.remove)
 
             Just Env -> case map fst $ Env.content env of
                             [] -> return ()
