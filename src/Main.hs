@@ -33,19 +33,19 @@ runRepl = do
 
 
 evalLine :: Bool -> String -> StateT Env.Env IO ()
-evalLine showMatches line =
-    unless (null line) $ do
-        env <- get
-        case parseLine line env of
-            Left e -> lift $ putStrLn $ "Error: " ++ e
-            Right (Evaluate e) ->
-                let result = eval e in
-                lift $ do
-                    print result
-                    when showMatches $ matches result env
-            Right (Definition s e) -> do
-                modify (Env.add s e)
-                lift $ when showMatches $ matches e env
+evalLine showMatches line = do
+    env <- get
+    case parseLine line env of
+        Left e -> lift $ putStrLn $ "Error: " ++ e
+        Right None -> return ()
+        Right (Evaluate e) ->
+            let result = eval e in
+            lift $ do
+                print result
+                when showMatches $ matches result env
+        Right (Definition s e) -> do
+            modify (Env.add s e)
+            lift $ when showMatches $ matches e env
     where
         matches :: LambdaExpr -> Env.Env -> IO ()
         matches lambda env =
@@ -74,13 +74,14 @@ runCommand line = do
             
             Just Save -> lift $ case args of
                 [file] -> tryWriteFile env file
-                _ -> invalidArguments ":s"
+                _ -> do
+                    putStrLn "Invalid number of arguments for :s"
+                    putStrLn "Enter :? for help"
             
             Just Print -> lift $ case args of
                 [arg] -> case Env.get arg env of
                             Nothing -> putStrLn $ "Error: Undefined var " ++ arg
                             Just x -> print x
-                _ -> invalidArguments ":p"
             
             Just Remove -> modify (`removeVars` args)
                 where removeVars = foldl (flip Env.remove)
@@ -93,12 +94,6 @@ runCommand line = do
                 putStrLn $ "Command " ++ takeWhile (/= ' ') line ++ " not found"
                 putStrLn "Enter :? for help"
         runRepl
-
-
-invalidArguments :: String -> IO ()
-invalidArguments cmd = do
-    putStrLn $ "Invalid number of arguments for " ++ cmd
-    putStrLn "Enter :? for help"
 
 
 loadFile :: FilePath -> StateT Env.Env IO ()

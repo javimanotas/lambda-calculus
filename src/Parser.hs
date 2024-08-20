@@ -5,6 +5,7 @@ import LambdaExpr
 import qualified Enviroment as Env
 import Eval
 
+import Data.Function
 import Control.Monad
 import qualified Data.Set as Set
 import Text.Parsec
@@ -14,6 +15,7 @@ type Parser = Parsec String ()
 
 data InputResult = Definition String LambdaExpr
                  | Evaluate LambdaExpr
+                 | None
 
 
 parseLine :: String -> Env.Env -> Either String InputResult
@@ -23,7 +25,7 @@ parseLine line env = do
 
 
 parser :: Parser InputResult
-parser = between spaces eof parse
+parser = between spaces eof $ option None tryParse
     where
         lambda = str "\\" <|> str "λ"
         dot    = str "."
@@ -33,10 +35,10 @@ parser = between spaces eof parse
             params <- between lambda dot (many1 $ identifier lower)
             body <- expr
             return $ foldr Abstr body params
-        
+
         appl  = foldl1 Appl <$> many1 ((Var <$> identifier letter) <|> between (str "(") (str ")") expr)
 
-        parse = try (Definition <$> definition <*> expr) <|> (Evaluate <$> expr)
+        tryParse = try (Definition <$> definition <*> expr) <|> (Evaluate <$> expr)
 
 
 definition :: Parser String
@@ -44,7 +46,7 @@ definition = do
     hd <- upper -- Ensure the first char is a capital letter
     tl <- many letter
     spaces
-    string "="
+    _ <- string "="
     spaces
     return $ hd:tl
 
@@ -58,21 +60,22 @@ str x = string x >> spaces
 
 
 replaceDefinitions :: Env.Env -> InputResult -> Either String InputResult
-replaceDefinitions env (Definition s l) = Definition s <$> replace' env l
-replaceDefinitions env (Evaluate l)     = Evaluate <$> replace' env l
+replaceDefinitions env (Definition s l) = Definition s <$> replace env l
+replaceDefinitions env (Evaluate l)     = Evaluate <$> replace env l
+replaceDefinitions _   None             = return None
 
 
-replace' :: Env.Env -> LambdaExpr -> Either String LambdaExpr
-replace' env expr = foldM replaceVar expr $ definedVars expr
+replace :: Env.Env -> LambdaExpr -> Either String LambdaExpr
+replace env expr = foldM replaceVar expr $ definedVars expr
     where
         definedVars :: LambdaExpr -> Set.Set Identifier
         definedVars (Var x)
             | isDefinition x    = Set.singleton x
             | otherwise         = Set.empty
-        definedVars (Appl x y)  = definedVars x `Set.union` definedVars y
+        definedVars (Appl x y)  = (Set.union `on` definedVars) x y
         definedVars (Abstr _ y) = definedVars y
         
         replaceVar :: LambdaExpr -> Identifier -> Either String LambdaExpr
         replaceVar lambda var = case Env.get (show var) env of
             Nothing -> Left $ "Undefined variable " ++ show var
-            Just expr -> Right $ replace var expr lambda
+            Just e -> Right $ betaReduction var e lambda

@@ -1,4 +1,4 @@
-module Eval ( eval, replace ) where
+module Eval ( eval, betaReduction ) where
 
 import LambdaExpr
 import Data.List
@@ -15,14 +15,14 @@ eval = simplifyRename . eval'
             Appl m n -> Appl (eval' m) (eval' n)
             where
                 tryReduce appl@(Appl m a) = case tryReduce m of
-                    Abstr v f -> tryReduce $ replace v a f
+                    Abstr v f -> tryReduce $ betaReduction v a f
                     _ -> appl
                 tryReduce term = term
 
 
 -- replaces var with exp in lambda
-replace :: Identifier -> LambdaExpr -> LambdaExpr -> LambdaExpr
-replace = replace' Set.empty
+betaReduction :: Identifier -> LambdaExpr -> LambdaExpr -> LambdaExpr
+betaReduction = replace' Set.empty
     where
         replace' inBounded var exp (Var x)
             | var == x  = alphaRename inBounded exp
