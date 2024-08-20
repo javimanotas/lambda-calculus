@@ -39,7 +39,7 @@ evalLine showMatches line = do
         Left e -> lift $ putStrLn $ "Error: " ++ e
         Right None -> return ()
         Right (Evaluate e) ->
-            let result = eval e in
+            let result = normalForm e in
             lift $ do
                 print result
                 when showMatches $ matches result env
