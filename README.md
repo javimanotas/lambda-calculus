@@ -2,18 +2,18 @@
 Untyped lambda calculus REPL
 
 ## Features
- - Lazy evaluation (allows recursion with Y combinator to halt)
+ - Lazy evaluation
  - Loading files into the enviroment
  - Saving the defined variables from the enviroment into a file
- - More usefull commands
+ - Usefull commands
  - A default enviroment that gets loaded when the program starts
+ - Detect when the evaluation of an expression matches whith an expression already defined
 
 ## Building and running
 
-Navigate to the root directory of the project and run the following commands:
+Navigate to the root directory of the project and run the following command:
 
 ```bash
-cabal build
 cabal run
 ```
 
@@ -26,7 +26,7 @@ Note that reduced form is supported
 λ> (\p q.p q p) (\x y.x) (\x y.y)
 λx y.y
 ```
-Give expressions a name with '='
+Give expressions a name with '=' if you want to use them later
 
 Names must start with uppercase and its expression wont be evaluated until it's needed
 ```lambda
