@@ -4,6 +4,7 @@ import Data.Char
 import Data.Function
 import qualified Data.Map as Map
 
+
 data Identifier = Id { name :: String
                      , index :: Int }
                      deriving (Eq, Ord)
@@ -27,6 +28,7 @@ isDefinition :: Identifier -> Bool
 isDefinition (Id {name = x:_, index = _}) = isAsciiUpper x
 isDefinition _                            = False
 
+
 data LambdaExpr = Var Identifier
                 | Abstr Identifier LambdaExpr
                 | Appl LambdaExpr LambdaExpr
@@ -36,7 +38,7 @@ instance Show LambdaExpr where
     show (Abstr x y) = "λ" ++ show x ++ showAbstr y
         -- support reduced form
         where showAbstr (Abstr x' y') = ' ' : show x' ++ showAbstr y'
-              showAbstr other       = '.' : show other
+              showAbstr other         = '.' : show other
     show (Appl x y)  = x' ++ ' ' : y'
         where x' = case x of
                     a@(Abstr _ _) -> '(' : show a ++ ")"
@@ -44,6 +46,17 @@ instance Show LambdaExpr where
               y' = case y of
                     v@(Var _) -> show v
                     other -> '(' : show other ++ ")"
+
+matchedChurch :: LambdaExpr -> Maybe Int
+matchedChurch (Abstr x (Abstr y z)) = matched z
+    where
+        matched (Var v)
+            | v == y    = Just 0
+        matched (Appl (Var l) b)
+            | x == l    = (+1) <$> matched b
+        matched _       = Nothing
+matchedChurch _         = Nothing
+
 
 data BrujinIdx = BVar (Maybe Int)
                | BAbstr BrujinIdx
@@ -56,21 +69,6 @@ instance Eq LambdaExpr where
             toBrujin :: LambdaExpr -> BrujinIdx
             toBrujin = toBrujin' Map.empty
                 where
-                    toBrujin' m (Var x) = BVar $ Map.lookup x m
-                    toBrujin' m (Appl x y) = BAppl (toBrujin' m x) (toBrujin' m y)
-                    toBrujin' m (Abstr x y) =
-                        let inserted = Map.insert x 0 m
-                            m' = fmap (+1) inserted
-                        in BAbstr $ toBrujin' m' y
-
-matchedChurch :: LambdaExpr -> Maybe Int
-matchedChurch (Abstr x (Abstr y z)) = matched z
-    where
-        matched (Var v)
-            | v == y    = Just 0
-            | otherwise = Nothing
-        matched (Appl (Var l) b)
-            | x == l    = (+1) <$> matched b
-            | otherwise = Nothing
-        matched _      = Nothing
-matchedChurch _                     = Nothing
+                    toBrujin' m (Var x)     = BVar $ Map.lookup x m
+                    toBrujin' m (Appl x y)  = BAppl (toBrujin' m x) (toBrujin' m y)
+                    toBrujin' m (Abstr x y) = BAbstr $ toBrujin' ((+1) <$> Map.insert x 0 m) y
